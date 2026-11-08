@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bdh-app-sunpeaks-webcams"
+version = "1.0.0"
+description = "Black Diamond Hub app: Sun Peaks resort webcam viewer"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "bdh-sdk>=0.1,<1",
+    "beautifulsoup4",
+    "requests",
+    "python-dateutil",
+    "pytz",
+]
+
+[project.urls]
+Source = "https://github.com/blackdiamondlodge/bdh-app-sunpeaks-webcams"
+
+[project.entry-points."blackdiamondhub.plugins"]
+sunpeaks_webcams = "sunpeaks_webcams.plugin:spec"
+
+[tool.setuptools.packages.find]
+include = ["sunpeaks_webcams", "sunpeaks_webcams.*"]
+
+[tool.setuptools.package-data]
+sunpeaks_webcams = [
+    "templates/**/*",
+    "static/**/*",
+    "migrations/*.py",
+]
