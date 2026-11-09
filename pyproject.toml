@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bdh-app-sunpeaks-webcams"
-version = "1.0.0"
+version = "1.1.0"
 description = "Black Diamond Hub app: Sun Peaks resort webcam viewer"
 readme = "README.md"
 license = { text = "MIT" }
@@ -13,6 +13,7 @@ dependencies = [
     "bdh-sdk>=0.1,<1",
     "beautifulsoup4",
     "requests",
+    "Pillow",
     "python-dateutil",
     "pytz",
 ]
