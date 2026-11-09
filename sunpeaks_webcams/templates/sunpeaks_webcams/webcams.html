@@ -1,239 +1,500 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}SunPeaks Webcams{% endblock %}
+{% block title %}Sun Peaks Webcams{% endblock %}
 
 {% block content %}
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SunPeaks Webcams</title>
+<style>
+    body {
+        background: radial-gradient(ellipse 120% 80% at 50% 0%, #1d3350 0%, #0c1622 55%, #060a10 100%) fixed !important;
+        color: #fff;
+        margin: 0;
+        overflow: hidden;
+    }
+    body.wv-open { overflow: hidden !important; }
 
-    <style>
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            overflow: hidden;
-        }
+    #webcams {
+        --rail: 170px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        height: calc(100vh - 62px);
+        padding: 14px 14px 14px 0;
+        box-sizing: border-box;
+        max-width: 1920px;
+        margin: 0 auto;
+    }
+    #webcams::before {
+        content: "";
+        position: absolute;
+        left: calc(var(--rail) - 4px);
+        top: 40px;
+        bottom: 40px;
+        width: 1px;
+        background: linear-gradient(#5ec8ff, rgba(94, 200, 255, .15));
+    }
+    .band {
+        flex: var(--weight, 1) 1 0;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: var(--rail) minmax(0, 1fr);
+    }
+    .band-label {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-end;
+        padding-right: 22px;
+        white-space: nowrap;
+    }
+    .band-label::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 50%;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #5ec8ff;
+        box-shadow: 0 0 10px #5ec8ff;
+        transform: translate(0, -50%);
+    }
+    .band-name {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, .82);
+    }
+    .band-range { font-size: 12px; color: rgba(255, 255, 255, .5); margin-top: 4px; }
+    .band-row {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+        grid-auto-rows: minmax(0, 1fr);
+        gap: 12px;
+        margin-left: 12px;
+        min-height: 0;
+    }
 
-        /* Webcam container styling */
-        #webcams {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 20px;
-            padding: 20px;
-            max-width: 100%;
-            background-color: #000000;
-            height: calc(100vh - 62px);
-            overflow: hidden;
-        }
+    .cam {
+        position: relative;
+        min-height: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: #05080d;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, .35);
+        cursor: pointer;
+        transition: transform .2s ease, border-color .2s ease;
+    }
+    .cam:hover, .cam:focus-visible { border-color: rgba(94, 200, 255, .45); outline: none; }
+    .cam:active { transform: scale(.985); }
+    .cam img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .cam img.incoming { opacity: 0; transition: opacity .8s ease; }
+    .cam img.incoming.in { opacity: 1; }
+    .cam::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 45%;
+        background: linear-gradient(transparent, rgba(4, 8, 14, .82));
+        pointer-events: none;
+    }
+    .cam-cap {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+        z-index: 2;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 10px;
+        pointer-events: none;
+    }
+    .cam-name { font-weight: 700; font-size: 16px; line-height: 1.15; text-shadow: 0 1px 6px rgba(0, 0, 0, .7); }
+    .cam-loc { font-size: 12px; color: rgba(255, 255, 255, .65); font-weight: 500; margin-top: 3px; }
 
-        /* Camera container */
-        .cam {
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            transition: box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column; /* So the name and image stack vertically */
-            align-items: center;     
-            justify-content: center; 
-            overflow: hidden;        
-        }
+    .pill {
+        flex: none;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(10, 18, 28, .55);
+        border: 1px solid rgba(255, 255, 255, .14);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        white-space: nowrap;
+        color: #fff;
+    }
+    .pill i { color: #5ec8ff; margin-right: 5px; }
+    .age {
+        font-size: 11px;
+        letter-spacing: .1em;
+        color: rgba(255, 255, 255, .85);
+    }
+    .age::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #3cc8b4;
+        box-shadow: 0 0 8px #3cc8b4;
+        margin-right: 6px;
+        vertical-align: 1px;
+    }
+    .age.stale { color: #ffc35c; border-color: rgba(255, 195, 92, .45); }
+    .age.stale::before { background: #ffc35c; box-shadow: 0 0 8px #ffc35c; }
+    .cam .age { position: absolute; top: 10px; right: 10px; z-index: 2; pointer-events: none; }
 
-        /* Image styling */
-        .cam img {
-            width: auto;
-            height: 100%;
-            max-height: 100%;
-            max-width: 100%;
-            object-fit: contain; 
-            border-radius: 8px;
-        }
-        
-        .cam:hover {
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* Display camera name on the main page */
-        .cam h2 {
-            display: block; 
-            margin: 0 0 10px 0; /* A little spacing above the image */
-            color: #333;
-            font-size: 16px;
-        }
+    .wc-empty {
+        margin: 12vh auto 0;
+        max-width: 460px;
+        padding: 36px 32px;
+        text-align: center;
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: linear-gradient(160deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .03));
+        backdrop-filter: blur(10px);
+        box-shadow: 0 14px 36px rgba(0, 0, 0, .28);
+    }
+    .wc-empty i { font-size: 34px; color: #5ec8ff; margin-bottom: 14px; }
+    .wc-empty p { margin: 6px 0 0; color: rgba(255, 255, 255, .6); }
 
-        /* Hide data rows outside the modal */
-        .template.table.simple {
-            display: none;
-        }
-        
-        /* Fade-in animation */
-        .fade-in {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @media (max-width: 1200px) {
-            #webcams {
-                grid-template-columns: repeat(2, 1fr);
-                grid-template-rows: repeat(3, 1fr);
-            }
-        }
-        
-        @media (max-width: 768px) {
-            #webcams {
-                grid-template-columns: 1fr;
-                grid-template-rows: repeat(9, 1fr);
-            }
-        }
+    /* Viewer */
+    #webcam-image-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1050;
+        background: rgba(4, 8, 14, .94);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+    }
+    #webcam-image-modal.open { display: flex; }
+    #webcam-image-modal-image {
+        max-width: calc(100vw - 180px);
+        max-height: calc(100vh - 150px);
+        object-fit: contain;
+        border-radius: 14px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+        animation: wv-in .25s ease;
+    }
+    @keyframes wv-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+    .wv-top {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 20px;
+        pointer-events: none;
+    }
+    .wv-top > * { pointer-events: auto; }
+    .wv-name { font-size: 20px; font-weight: 700; }
+    #webcam-image-modal-caption { font-size: 13px; color: rgba(255, 255, 255, .6); margin-top: 3px; }
+    .wv-meta { display: flex; align-items: center; gap: 12px; }
+    .wv-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, .16);
+        background: rgba(10, 18, 28, .6);
+        backdrop-filter: blur(10px);
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+    }
+    .wv-btn:hover { border-color: rgba(94, 200, 255, .6); }
+    .wv-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 56px; height: 56px; }
+    .wv-prev { left: 22px; }
+    .wv-next { right: 22px; }
+    .wv-count { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); }
 
-        /* Modal */
-        #webcam-image-modal {
-            display: none;
-            position: fixed;
-            z-index: 1050;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            padding-top: 20px;
-            background-color: rgba(0, 0, 0, 0.9);
-            cursor: pointer;
-        }
+    @media (max-width: 900px) {
+        body { overflow: auto; }
+        #webcams { height: auto; padding: 12px; gap: 18px; }
+        #webcams::before, .band-label::after { display: none; }
+        .band { display: block; flex: none; }
+        .band-label { flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 10px; padding: 0 4px 8px; }
+        .band-row { --cols: 2 !important; margin-left: 0; grid-auto-rows: auto; }
+        .cam { aspect-ratio: 16 / 9; }
+        #webcam-image-modal-image { max-width: 100vw; max-height: calc(100vh - 160px); border-radius: 0; }
+        .wv-nav { top: auto; bottom: 10px; transform: none; }
+        .wv-count { bottom: 22px; }
+    }
+    @media (max-width: 600px) {
+        .band-row { --cols: 1 !important; }
+    }
+</style>
 
-        /* Modal content (image) */
-        #webcam-image-modal .modal-content {
-            margin: auto;
-            display: block;
-            max-width: 80%;
-            max-height: 75vh;
-            object-fit: contain;
-            border-radius: 16px;
-            animation: zoom 0.5s;
-            border: 5px solid white;
-            cursor: pointer;
-        }
-
-        /* Caption for modal */
-        #webcam-image-modal-caption {
-            text-align: center;
-            color: #ccc;
-            font-size: 18px;
-            padding: 10px 0;
-        }
-        
-        @keyframes zoom {
-            from { transform: scale(0) }
-            to { transform: scale(1) }
-        }
-        
-        @keyframes fade-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .fade-in {
-            animation: fade-in 1s ease-in-out;
-        }
-    </style>
-</head>
-
-<body>
-    <div id="webcams">
-        {% for cam in sunpeaks_webcams %}
-        <div class="cam" 
-             data-camera-name="{{ cam.camera_name }}"
-             data-last-updated="{{ cam.last_updated }}"
-             data-location="{{ cam.location }}"
-             data-elevation="{{ cam.elevation }}">
-
-            <!-- Reintroduce the camera name -->
-            <h2>{{ cam.camera_name }}</h2>
-
-            <img src="{{ cam.image_url }}" alt="Webcam: {{ cam.camera_name }}" 
-                 onclick="openModal(this)" 
-                 onerror="this.onerror=null;this.src='{% static 'sunpeaks_webcams/webcam_offline.webp' %}';">
-            
-            <input type="hidden" class="camera-timestamp" value="{{ cam.timestamp }}">
+<div id="webcams">
+    {% for band in bands %}
+    <section class="band" style="--weight: {{ band.weight|stringformat:"s" }}">
+        <div class="band-label">
+            <div class="band-name">{{ band.name }}</div>
+            {% if band.range %}<div class="band-range">{{ band.range }}</div>{% endif %}
         </div>
-        {% endfor %}
+        <div class="band-row" style="--cols: {{ band.cols }}">
+            {% for cam in band.cams %}
+            <div class="cam" tabindex="0" role="button"
+                 data-slug="{{ cam.slug }}"
+                 data-ts="{{ cam.timestamp|default:'' }}"
+                 data-full="{{ cam.image_url }}"
+                 data-name="{{ cam.camera_name }}"
+                 data-location="{{ cam.location }}"
+                 data-elevation="{{ cam.elevation_label|default:cam.elevation }}"
+                 data-time="{{ cam.time_label }}">
+                <img src="{% if cam.timestamp %}thumb/{{ cam.slug }}/{{ cam.timestamp }}.jpg{% else %}{{ cam.image_url }}{% endif %}"
+                     alt="Webcam: {{ cam.camera_name }}">
+                <div class="pill age"{% if not cam.time_label %} hidden{% endif %}><span class="age-time">{{ cam.time_label }}</span></div>
+                <div class="cam-cap">
+                    <div>
+                        <div class="cam-name">{{ cam.camera_name }}</div>
+                        {% if cam.location %}<div class="cam-loc">{{ cam.location }}</div>{% endif %}
+                    </div>
+                    {% if cam.elevation_label %}<div class="pill"><i class="fas fa-mountain"></i>{{ cam.elevation_label }}</div>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% empty %}
+    <div class="wc-empty">
+        <i class="fas fa-video-slash"></i>
+        <h5>Webcams are unavailable</h5>
+        <p>Sun Peaks isn't responding right now. This page will retry automatically.</p>
     </div>
+    {% endfor %}
+</div>
 
-    <div id="webcam-image-modal" class="modal" onclick="closeModal()">
-        <img class="modal-content" id="webcam-image-modal-image">
-        <div id="webcam-image-modal-caption"></div>
-    </div>    
+<div id="webcam-image-modal" aria-hidden="true">
+    <div class="wv-top">
+        <div>
+            <div class="wv-name" id="wv-name"></div>
+            <div id="webcam-image-modal-caption"></div>
+        </div>
+        <div class="wv-meta">
+            <div class="pill age" id="wv-age"></div>
+            <button type="button" class="wv-btn wv-close" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+    </div>
+    <img id="webcam-image-modal-image" alt="">
+    <button type="button" class="wv-btn wv-nav wv-prev" aria-label="Previous webcam"><i class="fas fa-chevron-left"></i></button>
+    <button type="button" class="wv-btn wv-nav wv-next" aria-label="Next webcam"><i class="fas fa-chevron-right"></i></button>
+    <div class="pill wv-count" id="wv-count"></div>
+</div>
 
-    <script>
-      function checkForNewImages() {
-          fetch('get_webcams/')
-              .then(response => response.json())
-              .then(newCameraData => {
-                  newCameraData.forEach(newCam => {
-                      const cameraDiv = document.querySelector(`.cam[data-camera-name="${newCam.camera_name}"]`);
-                      if (cameraDiv) {
-                          const currentTimestamp = cameraDiv.querySelector('.camera-timestamp').value;
-                          if (newCam.timestamp !== currentTimestamp) {
-                              const imgElement = cameraDiv.querySelector('img');
-                              imgElement.src = newCam.image_url;
-                              cameraDiv.querySelector('.camera-timestamp').value = newCam.timestamp;
-                              
-                              // Fade in the updated image
-                              imgElement.classList.add('fade-in');
-                              setTimeout(() => {
-                                  imgElement.classList.remove('fade-in');
-                              }, 1000);
-                          }
-                      }
-                  });
-              })
-              .catch(error => console.error('Error checking for new images:', error));
-      }
-      setInterval(checkForNewImages, 15000);
+<script>
+(() => {
+    const STALE_AFTER = {{ stale_after }};
+    const OFFLINE = "{% static 'sunpeaks_webcams/webcam_offline.webp' %}";
+    const grid = document.getElementById('webcams');
+    const modal = document.getElementById('webcam-image-modal');
+    const vimg = document.getElementById('webcam-image-modal-image');
+    const vname = document.getElementById('wv-name');
+    const vcap = document.getElementById('webcam-image-modal-caption');
+    const vage = document.getElementById('wv-age');
+    const vcount = document.getElementById('wv-count');
+    let viewerIndex = -1;
+    let timer = null;
 
-      // Modal functionality
-      const modal = document.getElementById("webcam-image-modal");
-      const modalImg = document.getElementById("webcam-image-modal-image");
-      const captionText = document.getElementById("webcam-image-modal-caption");
+    const tiles = () => Array.from(grid.querySelectorAll('.cam'));
+    const tileImg = t => t.querySelector('img:last-of-type');
+    const thumbUrl = (slug, ts) => `thumb/${encodeURIComponent(slug)}/${ts}.jpg`;
 
-      function openModal(img) {
-          // Show the modal
-          modal.style.display = "block";
-          // Set the modal image to the clicked image’s src
-          modalImg.src = img.src;
+    function withFallback(img) {
+        img.addEventListener('error', () => {
+            if (!img.src.endsWith(OFFLINE)) img.src = OFFLINE;
+        });
+    }
+    grid.querySelectorAll('.cam img').forEach(withFallback);
 
-          const parentCamDiv = img.closest(".cam");
-          const cameraName = parentCamDiv.dataset.cameraName || "";
-          const lastUpdated = parentCamDiv.dataset.lastUpdated || "";
-          const location = parentCamDiv.dataset.location || "";
-          const elevation = parentCamDiv.dataset.elevation || "";
+    function preload(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(src);
+            img.onerror = reject;
+            img.src = src;
+        });
+    }
 
-          captionText.innerHTML = `
-            <strong>Camera:</strong> ${cameraName}<br>
-            <strong>Last Updated:</strong> ${lastUpdated}<br>
-            <strong>Location:</strong> ${location}<br>
-            <strong>Elevation:</strong> ${elevation}
-          `;
-      }
+    function isStale(ts) {
+        return !!ts && Date.now() / 1000 - Number(ts) > STALE_AFTER;
+    }
 
-      function closeModal() {
-          modal.style.display = "none";
-      }
-    </script>
-</body>
-</html>
+    function markStale() {
+        tiles().forEach(t => t.querySelector('.age').classList.toggle('stale', isStale(t.dataset.ts)));
+        if (viewerIndex >= 0) updateViewerMeta(tiles()[viewerIndex]);
+    }
+
+    async function applyUpdate(cam) {
+        const t = grid.querySelector(`.cam[data-slug="${CSS.escape(cam.slug)}"]`);
+        if (!t || !cam.timestamp || t.dataset.ts === cam.timestamp) return;
+        const src = thumbUrl(cam.slug, cam.timestamp);
+        try { await preload(src); } catch (e) { return; }
+
+        // Cross-fade the new capture in over the old one.
+        const old = tileImg(t);
+        const fresh = document.createElement('img');
+        fresh.className = 'incoming';
+        fresh.alt = old.alt;
+        fresh.src = src;
+        withFallback(fresh);
+        old.after(fresh);
+        requestAnimationFrame(() => requestAnimationFrame(() => fresh.classList.add('in')));
+        setTimeout(() => { old.remove(); fresh.className = ''; }, 900);
+
+        t.dataset.ts = cam.timestamp;
+        t.dataset.full = cam.image_url;
+        t.dataset.time = cam.time_label;
+        const age = t.querySelector('.age');
+        age.querySelector('.age-time').textContent = cam.time_label;
+        age.hidden = !cam.time_label;
+        age.classList.remove('stale');
+        if (viewerIndex >= 0 && tiles()[viewerIndex] === t) showViewer(viewerIndex, true);
+    }
+
+    async function poll() {
+        clearTimeout(timer);
+        let next = 60;
+        try {
+            const resp = await fetch('get_webcams/', { cache: 'no-store' });
+            const data = await resp.json();
+            next = data.poll_after || 60;
+            const have = tiles().map(t => t.dataset.slug).sort().join('|');
+            const got = data.webcams.map(c => c.slug).sort().join('|');
+            if (data.webcams.length && have !== got && viewerIndex < 0) {
+                location.reload();
+                return;
+            }
+            data.webcams.forEach(applyUpdate);
+        } catch (e) {
+            console.error('Webcam refresh failed:', e);
+        }
+        markStale();
+        timer = setTimeout(poll, next * 1000);
+    }
+    timer = setTimeout(poll, {{ poll_after }} * 1000);
+    setInterval(markStale, 30000);
+    markStale();
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') poll();
+    });
+
+    // Viewer
+    function updateViewerMeta(t) {
+        vage.textContent = t.dataset.time;
+        vage.hidden = !t.dataset.time;
+        vage.classList.toggle('stale', isStale(t.dataset.ts));
+    }
+
+    function showViewer(i, refresh) {
+        const list = tiles();
+        if (!list.length) return;
+        i = (i + list.length) % list.length;
+        viewerIndex = i;
+        const t = list[i];
+        vname.textContent = t.dataset.name;
+        vcap.textContent = [t.dataset.location, t.dataset.elevation].filter(Boolean).join(' \u00b7 ');
+        vcount.textContent = `${i + 1} / ${list.length}`;
+        updateViewerMeta(t);
+
+        // Show the cached thumbnail immediately, then swap in the full-size capture.
+        const full = t.dataset.full;
+        vimg.dataset.want = full;
+        if (!refresh) {
+            vimg.src = tileImg(t).src;
+            vimg.style.animation = 'none';
+            void vimg.offsetWidth;
+            vimg.style.animation = '';
+        }
+        preload(full).then(() => {
+            if (viewerIndex === i && vimg.dataset.want === full) vimg.src = full;
+        }).catch(() => {});
+    }
+
+    function openViewer(i) {
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('wv-open');
+        showViewer(i, false);
+    }
+
+    function closeViewer() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('wv-open');
+        viewerIndex = -1;
+        vimg.dataset.want = '';
+    }
+
+    grid.addEventListener('click', e => {
+        const t = e.target.closest('.cam');
+        if (t) openViewer(tiles().indexOf(t));
+    });
+    grid.addEventListener('keydown', e => {
+        const t = e.target.closest('.cam');
+        if (t && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            openViewer(tiles().indexOf(t));
+        }
+    });
+
+    let suppressClick = false;
+    modal.addEventListener('click', e => {
+        if (suppressClick || e.target.closest('.wv-btn')) return;
+        closeViewer();
+    });
+    modal.querySelector('.wv-close').addEventListener('click', closeViewer);
+    modal.querySelector('.wv-prev').addEventListener('click', () => showViewer(viewerIndex - 1, false));
+    modal.querySelector('.wv-next').addEventListener('click', () => showViewer(viewerIndex + 1, false));
+
+    document.addEventListener('keydown', e => {
+        if (viewerIndex < 0) return;
+        if (e.key === 'Escape') closeViewer();
+        else if (e.key === 'ArrowLeft') showViewer(viewerIndex - 1, false);
+        else if (e.key === 'ArrowRight') showViewer(viewerIndex + 1, false);
+    });
+
+    let touchX = null, touchY = null;
+    modal.addEventListener('touchstart', e => {
+        touchX = e.touches[0].clientX;
+        touchY = e.touches[0].clientY;
+    }, { passive: true });
+    modal.addEventListener('touchend', e => {
+        if (touchX === null) return;
+        const dx = e.changedTouches[0].clientX - touchX;
+        const dy = e.changedTouches[0].clientY - touchY;
+        touchX = null;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+            suppressClick = true;
+            setTimeout(() => { suppressClick = false; }, 400);
+            showViewer(viewerIndex + (dx < 0 ? 1 : -1), false);
+        }
+    });
+})();
+</script>
 {% endblock %}
