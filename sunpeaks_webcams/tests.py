@@ -212,6 +212,34 @@ class WebcamEndpointTests(TestCase):
             failed = self.client.get(f'/sunpeaks_webcams/thumb/crystal-bowl/{T0}.jpg')
             self.assertRedirects(failed, f'{IMG_BASE}a.jpg?timestamp={T0}', fetch_redirect_response=False)
 
+    def test_latest_redirects_to_newest_capture(self):
+        with self._feed():
+            from sunpeaks_webcams import views
+            cams, _ = views.feed.get()
+            resp = self.client.get('/sunpeaks_webcams/latest/sundance.jpg')
+            self.assertEqual(self.client.get('/sunpeaks_webcams/latest/nope.jpg').status_code, 404)
+        sundance = next(c for c in cams if c['slug'] == 'sundance')
+        self.assertRedirects(resp, sundance['image_url'], fetch_redirect_response=False)
+        self.assertIn('no-cache', resp['Cache-Control'])
+
+    def test_backgrounds_provider(self):
+        from sunpeaks_webcams import provides
+        with self._feed():
+            bgs = provides.backgrounds()
+        self.assertEqual([(b.id, b.image_url, b.live) for b in bgs][:1],
+                         [('crystal-bowl', '/sunpeaks_webcams/latest/crystal-bowl.jpg', True)])
+        self.assertEqual(len(bgs), 3)
+
+    def test_backgrounds_put_sunburst_first(self):
+        from sunpeaks_webcams.provides import build_backgrounds
+        cams = [{'slug': 'village', 'camera_name': 'Village'}, {'slug': 'sb', 'camera_name': 'Top of Sunburst'}]
+        self.assertEqual([b.id for b in build_backgrounds(cams)], ['sb', 'village'])
+
+    def test_spec_declares_backgrounds(self):
+        from sunpeaks_webcams.plugin import spec
+        self.assertEqual(spec.provides, {'backgrounds': 'sunpeaks_webcams.provides.backgrounds'})
+
+
 class CheckForNewWebcamsTests(TestCase):
     def test_check_for_new_webcams_data(self):
         # Sun Peaks adds, renames and removes (seasonal) cameras, so don't pin

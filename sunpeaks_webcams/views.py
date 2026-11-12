@@ -55,6 +55,16 @@ def webcam_thumbnail(request, slug, timestamp):
     return resp
 
 
+@never_cache
+def webcam_latest(request, slug):
+    """A stable URL for a camera that always redirects to its newest capture."""
+    cams, _wait = feed.get()
+    cam = next((c for c in cams if c['slug'] == slug), None)
+    if cam is None:
+        raise Http404
+    return HttpResponseRedirect(cam['image_url'])
+
+
 def check_for_new_webcams():
     """Scrape the resort page directly, bypassing the shared feed."""
     response = requests.get(PAGE_URL, timeout=TIMEOUT)
